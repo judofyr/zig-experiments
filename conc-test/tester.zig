@@ -3,7 +3,7 @@ const std = @import("std");
 pub var default: Tester = undefined;
 
 pub fn setup() !void {
-    default = Tester.init(std.heap.c_allocator);
+    default = try Tester.init(std.heap.c_allocator);
 }
 
 pub const Tester = struct {
@@ -12,9 +12,9 @@ pub const Tester = struct {
     frames: std.ArrayList(anyframe),
     prng: std.rand.DefaultPrng,
 
-    pub fn init(alloc: *std.mem.Allocator) Self {
+    pub fn init(alloc: *std.mem.Allocator) !Self {
         var seed: u64 = undefined;
-        std.os.getrandom(std.mem.asBytes(&seed)) catch unreachable;
+        try std.os.getrandom(std.mem.asBytes(&seed));
 
         return Self{
             .frames = std.ArrayList(anyframe).init(alloc),
@@ -24,7 +24,9 @@ pub const Tester = struct {
 
     pub fn wait(self: *Self) void {
         suspend {
-            self.frames.append(@frame()) catch unreachable;
+            self.frames.append(@frame()) catch |err| {
+                resume @frame();
+            };
         }
     }
 
